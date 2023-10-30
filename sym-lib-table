@@ -1,5 +1,4 @@
 (sym_lib_table
   (version 7)
-  (lib (name "opto-counter-rescue")(type "KiCad")(uri "${KIPRJMOD}/opto-counter-rescue.kicad_sym")(options "")(descr ""))
   (lib (name "opto-counter")(type "KiCad")(uri "${KIPRJMOD}/opto-counter.kicad_sym")(options "")(descr ""))
 )
