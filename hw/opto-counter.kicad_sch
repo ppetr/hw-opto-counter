@@ -4,6 +4,13 @@
 
   (paper "A4")
 
+  (title_block
+    (title "Optical event counter")
+    (company "Copyright 2023 Google LLC")
+    (comment 2 "http://www.apache.org/licenses/LICENSE-2.0")
+    (comment 3 "Licensed under the Apache License, Version 2.0 (the \"License\").")
+  )
+
   (lib_symbols
     (symbol "Connector:Conn_01x03_Pin" (pin_names (offset 1.016) hide) (in_bom yes) (on_board yes)
       (property "Reference" "J" (at 0 5.08 0)
@@ -886,7 +893,6 @@
       )
     )
   )
-
 
   (junction (at 157.48 41.91) (diameter 0) (color 0 0 0 0)
     (uuid 08289596-7750-4170-9812-c983986fe333)
