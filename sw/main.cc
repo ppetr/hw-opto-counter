@@ -12,12 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+extern "C" {
+
 #include <avr/eeprom.h>
 #include <avr/io.h>
 #include <stdint.h>
 #include <util/delay.h>
 
-uint8_t EEMEM twi_address = 18; // Randomly generated - https://xkcd.com/221/
+}  // extern "C"
+
+uint8_t EEMEM twi_address = 18;  // Randomly generated - https://xkcd.com/221/
 
 int main(void) {
   eeprom_read_byte(&twi_address);

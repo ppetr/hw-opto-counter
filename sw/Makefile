@@ -22,7 +22,7 @@ TARGET_PREFIX=build/main
 ATPACK_ARCHIVE=Atmel.ATtiny_DFP.2.0.368.atpack.tar.xz
 ATPACK_DIR=build/atpack
 
-CFLAGS=-g -DF_CPU=$(AVR_FREQ) -Wall -Os -Werror -Wextra -B $(ATPACK_DIR)/gcc/dev/$(AVR_TYPE) -isystem $(ATPACK_DIR)/include
+CFLAGS=-g -DF_CPU=$(AVR_FREQ) -std=c++17 -Wall -Os -Werror -Wextra -B $(ATPACK_DIR)/gcc/dev/$(AVR_TYPE) -isystem $(ATPACK_DIR)/include
 AVRDUDE_FLAGS=-p $(AVR_TYPE) -c$(PROGRAMMER_TYPE) -P$(PROGRAMMER_DEV) -b$(BAUD) -v
 
 MEMORY_TYPES=calibration eeprom efuse flash fuse hfuse lfuse lock signature application apptable boot prodsig usersig
