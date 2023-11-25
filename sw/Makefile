@@ -15,14 +15,14 @@
 SRCS=$(wildcard *.cc)
 BAUD=19200
 AVR_TYPE=attiny3224
-AVR_FREQ=3333333  # 3.3MHz (for accurate baudrate timing)
+AVR_FREQ=3'333'333L  # 3.3MHz (for accurate baudrate timing)
 PROGRAMMER_DEV=/dev/ttyUSB0
 PROGRAMMER_TYPE=jtag2updi
 TARGET_PREFIX=build/main
 ATPACK_ARCHIVE=Atmel.ATtiny_DFP.2.0.368.atpack.tar.xz
 ATPACK_DIR=build/atpack
 
-CFLAGS=-g -DF_CPU=$(AVR_FREQ) -std=c++17 -Wall -Os -Werror -Wextra -B $(ATPACK_DIR)/gcc/dev/$(AVR_TYPE) -isystem $(ATPACK_DIR)/include
+CFLAGS=-g -DF_CPU=$(AVR_FREQ) -DNDEBUG -std=c++17 -Wall -Os -Werror -Wextra -B $(ATPACK_DIR)/gcc/dev/$(AVR_TYPE) -isystem $(ATPACK_DIR)/include
 AVRDUDE_FLAGS=-p $(AVR_TYPE) -c$(PROGRAMMER_TYPE) -P$(PROGRAMMER_DEV) -b$(BAUD)
 
 MEMORY_TYPES=calibration eeprom efuse flash fuse hfuse lfuse lock signature application apptable boot prodsig usersig
