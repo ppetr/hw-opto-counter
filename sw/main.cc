@@ -29,14 +29,25 @@ extern "C" {
 
 template <typename T, typename U>
 T exchange(T& ref, U new_value) {
-  T result = ref;
+  T result = static_cast<T&&>(ref);
   ref = static_cast<U&&>(new_value);
   return result;
 }
 
+// A fixed-width fraction. The default types allow to represent values within
+// [0..1].
+template <typename T = uint16_t, uint8_t Bits = sizeof(T) * 8 - 2>
+struct FixedPointFraction {
+  constexpr static uint8_t kFractionBits = Bits;
+
+  constexpr FixedPointFraction(float f)
+      : fraction_bits(static_cast<T>(f * (1 << Bits))) {}
+
+  uint16_t fraction_bits;
+};
+
 class TCA0_PWM {
  public:
-  constexpr static uint16_t kDutyCycleBits = 14;
   struct Config {
     // Finds which divider value will fit in the 16-bit counter with maximum
     // precision. A `constexpr` constructor allows to do all floating point
@@ -85,53 +96,50 @@ class TCA0_PWM {
     TCA0.SINGLE.CTRLA = 0;  // Disable completely.
   }
 
-  // `duty_cycle` from 0 (static low) to 2^14 (static high).
-  void SetDutyCycle(uint16_t duty_cycle_14bit) {
+  // `duty_cycle` within [0..1].
+  void SetDutyCycle(FixedPointFraction<> duty_cycle) {
     TCA0.SINGLE.CMP0 = static_cast<uint16_t>(
-        ((long{TCA0.SINGLE.PER} + 1) * duty_cycle_14bit) >> 14);
+        ((long{TCA0.SINGLE.PER} + 1) * long{duty_cycle.fraction_bits}) >>
+        duty_cycle.kFractionBits);
     TCA0.SINGLE.CTRLESET = TCA_SINGLE_CMD_RESTART_gc;
   }
 };
 
 constexpr float TCA0_PWM::Config::kClkSelFreq[];
 
-// Counts a given number of TCA0 cycles (CMP0) and then triggers an interrupt.
+// Counts a given number of input event cycles and then triggers an interrupt.
 // Uses channels:
 // (0) To pass events - pulses from TCA0 (PWM).
 // (1) To trigger the delay immediately on construction.
-class TCB0DelayFromTCA0 {
+class TCB0Delay {
  public:
-  explicit TCB0DelayFromTCA0(uint16_t count) {
-    EVSYS.USERTCB0COUNT = kChannelClk;
-    EVSYS.USERTCB0CAPT = kChannelStart;
-    EVSYS.CHANNEL0 = EVSYS_CHANNEL0_TCA0_CMP0_LCMP0_gc;
+  explicit TCB0Delay(uint16_t count, EVSYS_USER_t input_channel,
+                     EVSYS_USER_t helper_channel = EVSYS_USER_CHANNEL5_gc) {
+    EVSYS.USERTCB0COUNT = input_channel;
+    EVSYS.USERTCB0CAPT = helper_channel;
     // See Section 22.3.3.1.7 in the manual.
     TCB0.EVCTRL = TCB_CAPTEI_bm;
     TCB0.CTRLB = TCB_CNTMODE_SINGLE_gc;
-    HasTriggered();  // Clear any pending interrupts.
+    (void)HasTriggered();  // Clear any pending interrupts.
     TCB0.INTCTRL = TCB_CAPT_bm;
     TCB0_CCMP = count - 1;
     TCB0.CTRLA = TCB_ENABLE_bm | TCB_CLKSEL_EVENT_gc;  // Enable last.
-    EVSYS.SWEVENTA = kUserEvent;
+    // Trigger an event immediately.
+    EVSYS.SWEVENTA =
+        1 << (helper_channel - EVSYS_USER_CHANNEL0_gc + EVSYS_SWEVENTA_gp);
   }
-  ~TCB0DelayFromTCA0() {
+  ~TCB0Delay() {
     TCB0.CTRLA = 0;  // Disable.
     TCB0.EVCTRL = 0;
-    EVSYS.CHANNEL0 = EVSYS_CHANNEL0_OFF_gc;
     EVSYS.USERTCB0COUNT = EVSYS_USER_OFF_gc;
   }
 
-  bool IsRunning() { return TCB0.STATUS & TCB_RUN_bm; }
+  bool IsRunning() const { return TCB0.STATUS & TCB_RUN_bm; }
   // Returns whether the delay has been reached and the interrupt invoked.
   // Cleared by the call.
   bool HasTriggered() {
     return exchange(TCB0.INTFLAGS, TCB_CAPT_bm) & TCB_CAPT_bm;
   }
-
- private:
-  constexpr static EVSYS_USER_t kChannelClk = EVSYS_USER_CHANNEL0_gc;
-  constexpr static EVSYS_USER_t kChannelStart = EVSYS_USER_CHANNEL1_gc;
-  constexpr static EVSYS_SWEVENTA_t kUserEvent = EVSYS_SWEVENTA_CH1_gc;
 };
 
 EMPTY_INTERRUPT(TCB0_INT_vect);
@@ -156,22 +164,24 @@ int main(void) {
   // Enable the TCA0 PA5 pin.
   PORTB.DIRSET = PIN0_bm;
   TCA0_PWM pwm(kLedPwmFreq);
+  EVSYS.CHANNEL0 = EVSYS_CHANNEL0_TCA0_CMP0_LCMP0_gc;
 
   Sleep sleep(SLPCTRL_SMODE_IDLE_gc);
   while (true) {
     {
-      pwm.SetDutyCycle(7 << (TCA0_PWM::kDutyCycleBits - 3));
-      TCB0DelayFromTCA0 delay(4);
-      while (!delay.HasTriggered()) {
-        sleep.Start();
-      }
+      pwm.SetDutyCycle(0.75);
+      TCB0Delay delay(4, EVSYS_USER_CHANNEL0_gc);
+      // while (!delay.HasTriggered()) {
+      sleep.Start();
+      //}
     }
     {
-      pwm.SetDutyCycle(1 << (TCA0_PWM::kDutyCycleBits - 3));
-      TCB0DelayFromTCA0 delay(4);
-      while (!delay.HasTriggered()) {
-        sleep.Start();
-      }
+      pwm.SetDutyCycle(0.25);
+      TCB0Delay delay(4, EVSYS_USER_CHANNEL0_gc);
+      // while (!delay.HasTriggered()) {
+      sleep.Start();
+      //}
     }
   }
+  EVSYS.CHANNEL0 = EVSYS_CHANNEL0_OFF_gc;
 }
