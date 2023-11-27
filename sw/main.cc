@@ -24,27 +24,10 @@ extern "C" {
 
 }  // extern "C"
 
+#include "util.h"
+
 // uint8_t EEMEM twi_address = 18;  // Randomly generated -
 // https://xkcd.com/221/
-
-template <typename T, typename U>
-T exchange(T& ref, U new_value) {
-  T result = static_cast<T&&>(ref);
-  ref = static_cast<U&&>(new_value);
-  return result;
-}
-
-// A fixed-width fraction. The default types allow to represent values within
-// [0..1].
-template <typename T = uint16_t, uint8_t Bits = sizeof(T) * 8 - 2>
-struct FixedPointFraction {
-  constexpr static uint8_t kFractionBits = Bits;
-
-  constexpr FixedPointFraction(float f)
-      : fraction_bits(static_cast<T>(f * (1 << Bits))) {}
-
-  uint16_t fraction_bits;
-};
 
 class TCA0_PWM {
  public:

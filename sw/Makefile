@@ -13,6 +13,7 @@
 # limitations under the License.
 
 SRCS=$(wildcard *.cc)
+HDRS=$(wildcard *.h)
 BAUD=19200
 AVR_TYPE=attiny3224
 AVR_FREQ=3'333'333L  # 3.3MHz (for accurate baudrate timing)
@@ -44,7 +45,7 @@ $(ATPACK_DIR):
 	mkdir -p '$(ATPACK_DIR)'
 	cd '$(ATPACK_DIR)' && tar xaf '$(ROOT_DIR)/$(ATPACK_ARCHIVE)'
 
-build/%.o: %.cc $(ATPACK_DIR)
+build/%.o: %.cc $(HDRS) $(ATPACK_DIR)
 	avr-g++ $(CFLAGS) -mmcu=$(AVR_TYPE) -Wa,-ahlmns=build/$*.lst -c -o $@ $<
 
 $(TARGET_PREFIX).elf: $(patsubst %.cc,build/%.o,$(SRCS))
