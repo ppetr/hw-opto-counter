@@ -16,6 +16,7 @@ extern "C" {
 
 #include <avr/eeprom.h>
 #include <avr/io.h>
+#include <avr/signature.h>
 #include <avr/sleep.h>
 #include <stdint.h>
 #include <stdlib.h>
