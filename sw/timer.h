@@ -39,6 +39,8 @@ class TCA0_PWM final {
 
   // Sets up the PWM, but with 0 duty cycle.
   TCA0_PWM(Config freq);
+  TCA0_PWM(const TCA0_PWM&) = delete;
+  TCA0_PWM& operator=(const TCA0_PWM&) = delete;
   ~TCA0_PWM();
 
   // `duty_cycle` within [0..1].
@@ -52,13 +54,22 @@ class TCA0_PWM final {
 
 // Counts a given number of input event cycles and then triggers an interrupt.
 // Uses channels:
-// (0) To pass events - pulses from TCA0 (PWM).
-// (1) To trigger the delay immediately on construction.
+// `input_channel`: An event in this channel triggers a delayed pulse. This is
+//     exactly what is done by `Start`.
+// `helper_channel`: To pass events - pulses from TCA0 (PWM).
 class TCB0Delay {
  public:
   explicit TCB0Delay(uint16_t count, EVSYS_USER_t input_channel,
                      EVSYS_USER_t helper_channel = EVSYS_USER_CHANNEL5_gc);
+  TCB0Delay(const TCB0Delay&) = delete;
+  TCB0Delay& operator=(const TCB0Delay&) = delete;
   ~TCB0Delay();
+
+  void Start() {
+    (void)HasTriggered();  // Clear any pending interrupts.
+    TCB0.CNT = 0;
+    EVSYS.SWEVENTA = trigger_event_;
+  }
 
   bool IsRunning() const { return TCB0.STATUS & TCB_RUN_bm; }
   // Returns whether the delay has been reached and the interrupt invoked.
@@ -66,6 +77,9 @@ class TCB0Delay {
   bool HasTriggered() {
     return exchange(TCB0.INTFLAGS, TCB_CAPT_bm) & TCB_CAPT_bm;
   }
+
+ private:
+  const EVSYS_SWEVENTA_t trigger_event_;
 };
 
 #endif  // _TIMER_H

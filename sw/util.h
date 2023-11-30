@@ -21,23 +21,31 @@ extern "C" {
 
 }  // extern "C"
 
+template <typename T>
+T&& move(T& ref) {
+  return static_cast<T&&>(ref);
+}
+
 template <typename T, typename U>
 T exchange(T& ref, U new_value) {
-  T result = static_cast<T&&>(ref);
-  ref = static_cast<U&&>(new_value);
+  T result = move<T>(ref);
+  ref = move<U>(new_value);
   return result;
 }
 
 // A fixed-width fraction. The default types allow to represent values within
 // [0..1].
-template <typename T = uint16_t, uint8_t Bits = sizeof(T) * 8 - 2>
+template <typename T = uint_fast16_t, uint8_t Bits = sizeof(T) * 8 - 2>
 struct FixedPointFraction {
+  using value_type = T;
   constexpr static uint8_t kFractionBits = Bits;
 
+  constexpr explicit FixedPointFraction(T fraction_bits_)
+      : fraction_bits(fraction_bits_) {}
   constexpr FixedPointFraction(float f)
-      : fraction_bits(static_cast<T>(f * (1 << Bits))) {}
+      : FixedPointFraction(static_cast<T>(f * (1 << Bits))) {}
 
-  uint16_t fraction_bits;
+  T fraction_bits;
 };
 
 #endif  // _UTIL_H

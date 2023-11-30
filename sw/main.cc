@@ -41,6 +41,72 @@ class Sleep {
   }
 };
 
+struct InputPin {
+  InputPin(PORT_t& port_, register8_t bitmask_)
+      : port(port_.IN), bitmask(bitmask_) {
+    port_.DIRCLR = bitmask;
+  }
+
+  bool Read() const { return port & bitmask; }
+
+  const register8_t& port;
+  register8_t bitmask;
+};
+
+class BinarySearch {
+ public:
+  // The result value is measured with this precision.
+  constexpr static int8_t kPrecisionBits = 8;
+
+  BinarySearch(TCB0Delay& delay, TCA0_PWM& pwm, InputPin input)
+      : delay_(delay),
+        pwm_(pwm),
+        input_(input),
+        lower_(0),
+        upper_((1 << kPrecisionBits) - 1) {
+    SetPwm();
+  }
+
+  // Returns the measured return value, or -1 if not available yet.
+  // TODO: Return `FixedPointFraction` instead.
+  int_fast16_t OnInterrupt() {
+    if (upper_ == lower_) {
+      return lower_;
+    }
+    if (delay_.HasTriggered()) {
+      if (input_.Read()) {
+        lower_ = middle();
+      } else {
+        upper_ = middle() - 1;
+      }
+      SetPwm();
+    }
+    return -1;
+  }
+
+ private:
+  void SetPwm() {
+    // We shift 1 bit less so that the maximum value for PWV is 0.5 - at which
+    // the signal at the base frequency is the strongest.
+    constexpr static uint8_t kShift =
+        FixedPointFraction<>::kFractionBits - kPrecisionBits - 1;
+    pwm_.SetDutyCycle(FixedPointFraction<>(middle() << kShift));
+    delay_.Start();
+  }
+
+  // As long as `upper_ > lower_`, the result is always `> _lower`.
+  uint_fast16_t middle() const { return (lower_ + upper_ + 1) / 2; }
+
+  TCB0Delay& delay_;
+  TCA0_PWM& pwm_;
+  InputPin input_;
+  // A value at [lower_] is known to be 0.
+  uint_fast16_t lower_;
+  // A value at [upper_ + 1] is known to be 1.
+  // It is assumed that [256] is always 1.
+  uint_fast16_t upper_;
+};
+
 constexpr const TCA0_PWM::Config kLedPwmFreq(1.0);
 
 int main(void) {
@@ -51,20 +117,12 @@ int main(void) {
   EVSYS.CHANNEL0 = EVSYS_CHANNEL0_TCA0_CMP0_LCMP0_gc;
 
   Sleep sleep(SLPCTRL_SMODE_IDLE_gc);
+  TCB0Delay delay(4, EVSYS_USER_CHANNEL0_gc);
   while (true) {
-    {
-      pwm.SetDutyCycle(0.75);
-      TCB0Delay delay(4, EVSYS_USER_CHANNEL0_gc);
-      // while (!delay.HasTriggered()) {
+    BinarySearch search(delay, pwm, InputPin(PORTB, PIN1_bm));
+    int_fast16_t signal;
+    while ((signal = search.OnInterrupt()) < 0) {
       sleep.Start();
-      //}
-    }
-    {
-      pwm.SetDutyCycle(0.25);
-      TCB0Delay delay(4, EVSYS_USER_CHANNEL0_gc);
-      // while (!delay.HasTriggered()) {
-      sleep.Start();
-      //}
     }
   }
   EVSYS.CHANNEL0 = EVSYS_CHANNEL0_OFF_gc;
