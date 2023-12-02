@@ -15,8 +15,12 @@
 #ifndef _TIMER_H
 #define _TIMER_H
 
+extern "C" {
+
 #include <avr/io.h>
 #include <stdint.h>
+
+}  // extern "C"
 
 #include "util.h"
 

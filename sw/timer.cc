@@ -14,15 +14,19 @@
 
 #include "timer.h"
 
+extern "C" {
+
 #include <avr/interrupt.h>
 #include <avr/io.h>
 #include <stdint.h>
+
+}  // extern "C"
 
 constexpr float TCA0_PWM::Config::kClkSelFreq[];
 
 TCA0_PWM::TCA0_PWM(Config freq) {
   // See Section 21.5.1 in the manual.
-  PORTMUX.TCAROUTEA = 0;
+  PORTMUX.TCAROUTEA = PORTMUX_TCA00_ALT1_gc;
   TCA0.SINGLE.PER = freq.per;
   TCA0.SINGLE.CMP0 = 0;  // Duty cycle.
   TCA0.SINGLE.CTRLB = TCA_SINGLE_WGMODE_SINGLESLOPE_gc | TCA_SINGLE_CMP0EN_bm;

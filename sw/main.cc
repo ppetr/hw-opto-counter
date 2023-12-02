@@ -14,7 +14,6 @@
 
 extern "C" {
 
-#include <avr/eeprom.h>
 #include <avr/io.h>
 #include <avr/signature.h>
 #include <avr/sleep.h>
@@ -25,9 +24,10 @@ extern "C" {
 }  // extern "C"
 
 #include "timer.h"
+#include "twi.h"
 
-// uint8_t EEMEM twi_address = 18;  // Randomly generated -
-// https://xkcd.com/221/
+constexpr uint8_t kTwiAddress =
+    18;  // Randomly generated - https://xkcd.com/221/
 
 class Sleep {
  public:
@@ -110,20 +110,31 @@ class BinarySearch {
 
 constexpr const TCA0_PWM::Config kLedPwmFreq(1.0);
 
+struct __attribute__((packed)) TwiOutData {
+  uint8_t channel1;
+  uint8_t channel2;
+};
+
+static_assert(sizeof(TwiOutData) == 2, "TwiOutData != 2");
+
 int main(void) {
-  // eeprom_read_byte(&twi_address);
-  // Enable the TCA0 PA5 pin.
-  PORTB.DIRSET = PIN0_bm;
+  Sleep sleep(SLPCTRL_SMODE_IDLE_gc);
+  Twi<TwiOutData> twi(kTwiAddress, TwiOutData{.channel1 = 42, .channel2 = 73});
+  // TODO: Use external pull-up resistors. The internal ones aren't enough.
+  PORTB.PIN0CTRL = PORT_PULLUPEN_bm;
+  PORTB.PIN1CTRL = PORT_PULLUPEN_bm;
+  // Enable the TCA0 PB3 pin (WO0 alternate)
+  PORTB.DIRSET = PIN3_bm;
   TCA0_PWM pwm(kLedPwmFreq);
   EVSYS.CHANNEL0 = EVSYS_CHANNEL0_TCA0_CMP0_LCMP0_gc;
 
-  Sleep sleep(SLPCTRL_SMODE_IDLE_gc);
   TCB0Delay delay(4, EVSYS_USER_CHANNEL0_gc);
   while (true) {
     BinarySearch search(delay, pwm, InputPin(PORTB, PIN1_bm));
     int_fast16_t signal;
     while ((signal = search.OnInterrupt()) < 0) {
       sleep.Start();
+      twi.OnInterrupt();
     }
   }
   EVSYS.CHANNEL0 = EVSYS_CHANNEL0_OFF_gc;
