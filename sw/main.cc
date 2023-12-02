@@ -120,9 +120,6 @@ static_assert(sizeof(TwiOutData) == 2, "TwiOutData != 2");
 int main(void) {
   Sleep sleep(SLPCTRL_SMODE_IDLE_gc);
   Twi<TwiOutData> twi(kTwiAddress, TwiOutData{.channel1 = 42, .channel2 = 73});
-  // TODO: Use external pull-up resistors. The internal ones aren't enough.
-  PORTB.PIN0CTRL = PORT_PULLUPEN_bm;
-  PORTB.PIN1CTRL = PORT_PULLUPEN_bm;
   // Enable the TCA0 PB3 pin (WO0 alternate)
   PORTB.DIRSET = PIN3_bm;
   TCA0_PWM pwm(kLedPwmFreq);

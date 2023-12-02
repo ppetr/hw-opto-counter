@@ -38,7 +38,8 @@ class Twi {
     TWI0.SADDR = address << 1;
     TWI0.SADDRMASK = 0;
     // Standard or regular fast mode.
-    TWI0.SCTRLA = TWI_ENABLE_bm | TWI_DIEN_bm | TWI_APIEN_bm;
+    TWI0.SCTRLA =
+        TWI_ENABLE_bm | TWI_DIEN_bm | TWI_PIEN_bm | TWI_APIEN_bm | TWI_SMEN_bm;
   }
   ~Twi() { TWI0.SCTRLA = 0; }
   Twi(const Twi&) = delete;
@@ -49,28 +50,41 @@ class Twi {
   void OnInterrupt() {
     constexpr static uint8_t kTwiDirHostRead = TWI_DIR_bm;
     const uint8_t status = TWI0.SSTATUS;
+    if (status & TWI_BUSERR_bm) {
+      // Clear the flag and wait for the protocol to restart.
+      TWI0.SSTATUS = TWI_BUSERR_bm;
+      return;
+    }
+    if (status & TWI_COLL_bm) {  // The flag will be cleared automatically.
+      // TODO: Reset the internal state.
+      return;
+    }
     // Writing a TWI_SCMD... command to SCTRLB clears TWI_DIF and TWI_APIF.
-    if ((status & TWI_DIR_bm) == kTwiDirHostRead) {
-      if ((status & TWI_APIF_bm) && ((status & TWI_AP_bm) == TWI_AP_ADR_gc)) {
+    // Also Smart Mode (TWI_SMEN_bm) resets TWI_DIF on accessing SDATA.
+    if (status & TWI_APIF_bm) {
+      if ((status & TWI_AP_bm) == TWI_AP_ADR_gc) {  // Address.
         read_snapshot_ = read_data_;
         read_index_ = 0;
         TWI0.SCTRLB = TWI_ACKACT_ACK_gc | TWI_SCMD_RESPONSE_gc;
-      } else if (status & TWI_DIF_bm) {
-        if (status & TWI_RXACK_bm) {  // The host replied with NACK.
-          TWI0.SCTRLB = TWI_ACKACT_NACK_gc | TWI_SCMD_RESPONSE_gc;
-        } else if (read_index_ < sizeof(read_snapshot_)) {
+        return;
+      } else {  // Stop.
+        TWI0.SCTRLB = TWI_ACKACT_ACK_gc | TWI_SCMD_COMPTRANS_gc;
+        return;
+      }
+    }
+    if (status & TWI_DIF_bm) {
+      if ((status & TWI_DIR_bm) == kTwiDirHostRead) {
+        if (read_index_ < sizeof(read_snapshot_)) {
           TWI0.SDATA =
               reinterpret_cast<const uint8_t*>(&read_snapshot_)[read_index_++];
-          TWI0.SCTRLB = TWI_ACKACT_ACK_gc | TWI_SCMD_RESPONSE_gc;
         } else {
           TWI0.SCTRLB = TWI_ACKACT_NACK_gc | TWI_SCMD_RESPONSE_gc;
         }
+      } else {  // Write.
+        // Swallow up any incoming data.
+        (void)TWI0.SDATA;
+        // TODO: Use this to receive a register number to read from.
       }
-    } else {
-      // Swallow up any incoming data.
-      // TODO: Use this to receive a register number to read from.
-      // Then reset the internal state on `TWI_AP_STOP`.
-      TWI0.SCTRLB = TWI_ACKACT_ACK_gc | TWI_SCMD_RESPONSE_gc;
     }
   }
 
