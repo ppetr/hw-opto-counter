@@ -110,16 +110,44 @@ class BinarySearch {
 
 constexpr const TCA0_PWM::Config kLedPwmFreq(1.0);
 
-struct __attribute__((packed)) TwiOutData {
-  uint8_t channel1;
-  uint8_t channel2;
-};
+class TwiOutData {
+ public:
+  // Each transaction is demarcated by start-stop (or start-abort).
+  void TransactionStart() {}
+  void TransactionAbort() {}
+  void TransactionStop() {}
+  // Called to acknowledge start of a write block.
+  bool WriteStart() { return true; }
+  // Called to acknowledge reception of a byte.
+  bool Write(uint8_t) { return true; }
+  // Called to acknowledge start of a read block.
+  bool ReadStart() {
+    read_index_ = 0;
+    return sizeof(read_data_) > 0;
+  }
+  // Called to return the next value to be passed to the host.
+  // Returning `-1` signals that there is no more data available.
+  int_fast16_t Read() {
+    if (read_index_ < sizeof(read_data_)) {
+      return reinterpret_cast<const uint8_t*>(&read_data_)[read_index_++];
+    } else {
+      return -1;
+    }
+  }
 
-static_assert(sizeof(TwiOutData) == 2, "TwiOutData != 2");
+ private:
+  uint_fast16_t read_index_ = 0;
+  struct __attribute__((packed)) {
+    uint8_t channel1 = 42;
+    uint8_t channel2 = 73;
+  } read_data_;
+
+  static_assert(sizeof(read_data_) == 2, "sizeof(read_data_) != 2");
+};
 
 int main(void) {
   Sleep sleep(SLPCTRL_SMODE_IDLE_gc);
-  Twi<TwiOutData> twi(kTwiAddress, TwiOutData{.channel1 = 42, .channel2 = 73});
+  TwiClient<TwiOutData> twi(kTwiAddress, TwiOutData());
   // Enable the TCA0 PB3 pin (WO0 alternate)
   PORTB.DIRSET = PIN3_bm;
   TCA0_PWM pwm(kLedPwmFreq);
