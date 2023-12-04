@@ -33,6 +33,48 @@ T exchange(T& ref, U new_value) {
   return result;
 }
 
+template <typename T>
+class optional {
+ public:
+  using value_type = T;
+
+  optional() : no_value_placeholder_(), has_value_(false) {}
+  optional(T value) { emplace(move(value)); }
+  ~optional() { reset(); }
+
+  bool has_value() const { return has_value_; }
+  operator bool() const { return has_value(); }
+
+  T& operator*() { return value_; }
+  const T& operator*() const { return value_; }
+  T* operator->() { return &**this; }
+  const T* operator->() const { return &**this; }
+
+  template <typename... Args>
+  T& emplace(Args... args) {
+    if (exchange(has_value_, true)) {
+      value_.~T();
+    }
+    value_ = T(args...);
+    return value_;
+  }
+
+  void reset() {
+    if (exchange(has_value_, false)) {
+      value_.~T();
+    }
+    no_value_placeholder_ = {};
+  }
+
+ private:
+  union {
+    struct {
+    } no_value_placeholder_;
+    T value_;
+  };
+  bool has_value_;
+};
+
 // A fixed-width fraction. The default types allow to represent values within
 // [0..1].
 template <typename T = uint_fast16_t, uint8_t Bits = sizeof(T) * 8 - 2>

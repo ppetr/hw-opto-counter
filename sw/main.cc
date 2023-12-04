@@ -126,12 +126,12 @@ class TwiOutData {
     return sizeof(read_data_) > 0;
   }
   // Called to return the next value to be passed to the host.
-  // Returning `-1` signals that there is no more data available.
-  int_fast16_t Read() {
+  // Returning an empty value signals that there is no more data available.
+  optional<uint8_t> Read() {
     if (read_index_ < sizeof(read_data_)) {
       return reinterpret_cast<const uint8_t*>(&read_data_)[read_index_++];
     } else {
-      return -1;
+      return {};
     }
   }
 

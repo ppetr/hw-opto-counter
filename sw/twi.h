@@ -87,9 +87,9 @@ class TwiClient {
       }
     } else if (status & TWI_DIF_bm) {  // Data interrupt.
       if ((status & TWI_DIR_bm) == kTwiDirHostRead) {
-        int_fast16_t data = io_.Read();
-        if (data >= 0) {
-          TWI0.SDATA = static_cast<uint8_t>(data);
+        optional<uint8_t> data = io_.Read();
+        if (data.has_value()) {
+          TWI0.SDATA = *data;
           return TWI_ACKACT_ACK_gc | TWI_SCMD_RESPONSE_gc;
         } else {
           return TWI_ACKACT_NACK_gc | TWI_SCMD_RESPONSE_gc;
