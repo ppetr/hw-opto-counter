@@ -57,7 +57,9 @@ class SMBusClient {
   // Called to acknowledge the start of a read block.
   bool ReadStart() {
     if (!command_.has_value()) {
-      return true;  // Quick command (if the transaction straight away).
+      // Allow (and ignore) a read without a command for a Quick command
+      // (assuming the transaction ends straight away).
+      return true;
     }
     index_ = 0;
     optional<int16_t> data = registers_.ReadWord(*command_);
