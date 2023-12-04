@@ -34,6 +34,16 @@ T exchange(T& ref, U new_value) {
 }
 
 template <typename T>
+struct identity {
+  typedef T type;
+};
+// See https://stackoverflow.com/q/27501400/1333025.
+template <typename T>
+T&& forward(typename identity<T>::type& param) {
+  return static_cast<typename identity<T>::type&&>(param);
+}
+
+template <typename T>
 class optional {
  public:
   using value_type = T;

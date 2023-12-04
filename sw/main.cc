@@ -55,6 +55,27 @@ struct InputPin {
   register8_t bitmask;
 };
 
+struct Registers {
+ public:
+  void Snapshot() {}
+  bool HasRegister(uint8_t reg) const { return ReadWord(reg).has_value(); }
+  optional<int16_t> ReadWord(uint8_t reg) const {
+    switch (reg) {
+      case 0:
+        return led1;
+      case 1:
+        return led2;
+      default:
+        return {};
+    }
+  }
+
+  int16_t led1;
+  int16_t led2;
+};
+
+using TwiRegisters = TwiClient<SMBusClient<Registers&>>;
+
 class BinarySearch {
  public:
   using value_type = FixedPointFraction<int_fast16_t, 8>;
@@ -109,28 +130,32 @@ class BinarySearch {
   value_type::value_type upper_;
 };
 
-constexpr const TCA0_PWM::Config kLedPwmFreq(1.0);
-
-class Registers {
- public:
-  void Snapshot() {}
-  bool HasRegister(uint8_t reg) const { return ReadWord(reg).has_value(); }
-  optional<int16_t> ReadWord(uint8_t reg) const {
-    switch (reg) {
-      case 0:
-        return {42};
-      case 1:
-        return {73};
-      default:
-        return {};
-    }
+BinarySearch::value_type BinarySearchLoop(TCA0_PWM& pwm, TCB0Delay& delay,
+                                          TwiRegisters& twi, Sleep& sleep,
+                                          InputPin opt_in) {
+  BinarySearch search(delay, pwm, opt_in);
+  BinarySearch::value_type signal(0);
+  while ((signal = search.OnInterrupt()).fraction_bits < 0) {
+    sleep.Start();
+    twi.OnInterrupt();
   }
-};
+  return signal;
+}
+
+constexpr const TCA0_PWM::Config kLedPwmFreq(1.0);
 
 int main(void) {
   Sleep sleep(SLPCTRL_SMODE_IDLE_gc);
-  TwiClient<SMBusClient<Registers>> twi(kTwiAddress,
-                                        SMBusClient<Registers>({}));
+  Registers regs;
+  TwiRegisters twi(kTwiAddress, SMBusClient<Registers&>(regs));
+  // Enable output for pins that provide GND to LEDs.
+  // Invert so that a logical 1 turns the LED on (GND).
+  PORTA.DIRSET = PIN5_bm | PIN6_bm;
+  PORTA.PIN5CTRL = PORT_INVEN_bm;
+  PORTA.PIN6CTRL = PORT_INVEN_bm;
+  // Optical sensor input pin (inverted).
+  const InputPin kOptIn(PORTB, PIN2_bm);
+  PORTB.PIN2CTRL = PORT_INVEN_bm;
   // Enable the TCA0 PB3 pin (WO0 alternate)
   PORTB.DIRSET = PIN3_bm;
   TCA0_PWM pwm(kLedPwmFreq);
@@ -138,12 +163,16 @@ int main(void) {
 
   TCB0Delay delay(4, EVSYS_USER_CHANNEL0_gc);
   while (true) {
-    BinarySearch search(delay, pwm, InputPin(PORTB, PIN1_bm));
-    BinarySearch::value_type signal(0);
-    while ((signal = search.OnInterrupt()).fraction_bits < 0) {
-      sleep.Start();
-      twi.OnInterrupt();
-    }
+    constexpr static auto kRegShift =
+        15 - BinarySearch::value_type::kFractionBits;
+    PORTA.OUTCLR = PIN6_bm;
+    PORTA.OUTSET = PIN5_bm;
+    regs.led1 = BinarySearchLoop(pwm, delay, twi, sleep, kOptIn).fraction_bits
+                << kRegShift;
+    PORTA.OUTCLR = PIN5_bm;
+    PORTA.OUTSET = PIN6_bm;
+    regs.led2 = BinarySearchLoop(pwm, delay, twi, sleep, kOptIn).fraction_bits
+                << kRegShift;
   }
   EVSYS.CHANNEL0 = EVSYS_CHANNEL0_OFF_gc;
 }

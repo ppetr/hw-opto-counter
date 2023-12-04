@@ -25,8 +25,6 @@ extern "C" {
 
 #include "util.h"
 
-// See also https://www.nongnu.org/avr-libc/examples/twitest/twitest.c
-
 template <typename IO>
 class TwiClient {
  public:
@@ -39,8 +37,9 @@ class TwiClient {
   };
 
   TwiClient(uint8_t address, IO io)
-      : TwiClient(Config{.address = address}, move(io)) {}
-  TwiClient(Config config, IO io) : io_(move(io)), in_transaction_(false) {
+      : TwiClient(Config{.address = address}, io) {}
+  TwiClient(Config config, IO io)
+      : io_(forward<IO>(io)), in_transaction_(false) {
     TWI0.CTRLA = config.sda_setup | config.bus_timeout;
     TWI0.SADDR = config.address << 1;
     TWI0.SADDRMASK = 0;

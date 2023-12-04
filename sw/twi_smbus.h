@@ -25,12 +25,14 @@ extern "C" {
 
 // Implements a subset of the SMBus protocol on top of `TwiClient`.
 // At the moment it only supports reading word (2-byte) registers.
+// See https://docs.kernel.org/i2c/smbus-protocol.html for details.
 // TODO: Add PEC
 // (https://docs.kernel.org/i2c/smbus-protocol.html#packet-error-checking-pec).
 template <typename Registers>
 class SMBusClient {
  public:
-  explicit SMBusClient(Registers registers) : registers_(move(registers)) {}
+  explicit SMBusClient(Registers registers)
+      : registers_(forward<Registers>(registers)) {}
 
   // Each transaction is demarcated by start-stop (or start-abort).
   void TransactionStart() {
