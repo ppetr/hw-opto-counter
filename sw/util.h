@@ -76,8 +76,8 @@ class optional {
 };
 
 // A fixed-width fraction. The default types allow to represent values within
-// [0..1].
-template <typename T = uint_fast16_t, uint8_t Bits = sizeof(T) * 8 - 2>
+// [-1..1].
+template <typename T = int_fast16_t, uint8_t Bits = sizeof(T) * 8 - 2>
 struct FixedPointFraction {
   using value_type = T;
   constexpr static uint8_t kFractionBits = Bits;

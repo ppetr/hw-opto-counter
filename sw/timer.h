@@ -63,6 +63,11 @@ class TCA0_PWM final {
 
   // `duty_cycle` within [0..1].
   void SetDutyCycle(FixedPointFraction<> duty_cycle) {
+    if (duty_cycle.fraction_bits < 0) {
+      duty_cycle.fraction_bits = 0;
+    } else if (duty_cycle.fraction_bits > (1 << duty_cycle.kFractionBits)) {
+      duty_cycle.fraction_bits = 1 << duty_cycle.kFractionBits;
+    }
     TCA0.SINGLE.CMP0 = static_cast<uint16_t>(
         ((long{TCA0.SINGLE.PER} + 1) * long{duty_cycle.fraction_bits}) >>
         duty_cycle.kFractionBits);

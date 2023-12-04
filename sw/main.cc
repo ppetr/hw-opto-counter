@@ -56,23 +56,22 @@ struct InputPin {
 
 class BinarySearch {
  public:
-  // The result value is measured with this precision.
-  constexpr static int8_t kPrecisionBits = 8;
+  using value_type = FixedPointFraction<int_fast16_t, 8>;
 
   BinarySearch(TCB0Delay& delay, TCA0_PWM& pwm, InputPin input)
       : delay_(delay),
         pwm_(pwm),
         input_(input),
         lower_(0),
-        upper_((1 << kPrecisionBits) - 1) {
+        upper_(value_type(1.0f).fraction_bits - 1) {
     SetPwm();
   }
 
-  // Returns the measured return value, or -1 if not available yet.
-  // TODO: Return `FixedPointFraction` instead.
-  int_fast16_t OnInterrupt() {
+  // Returns the measured return value in [0..1], or a negative value if not
+  // available yet.
+  value_type OnInterrupt() {
     if (upper_ == lower_) {
-      return lower_;
+      return value_type(lower_);
     }
     if (delay_.HasTriggered()) {
       if (input_.Read()) {
@@ -82,30 +81,31 @@ class BinarySearch {
       }
       SetPwm();
     }
-    return -1;
+    return value_type{-1};
   }
 
  private:
   void SetPwm() {
-    // We shift 1 bit less so that the maximum value for PWV is 0.5 - at which
+    // We shift 1 bit less so that the maximum value for PWM is 0.5 - at which
     // the signal at the base frequency is the strongest.
-    constexpr static uint8_t kShift =
-        FixedPointFraction<>::kFractionBits - kPrecisionBits - 1;
+    constexpr static int_fast16_t kShift =
+        FixedPointFraction<>::kFractionBits - value_type::kFractionBits - 1;
+    static_assert(kShift >= 0, "Precision exceeds the PWM precision");
     pwm_.SetDutyCycle(FixedPointFraction<>(middle() << kShift));
     delay_.Start();
   }
 
   // As long as `upper_ > lower_`, the result is always `> _lower`.
-  uint_fast16_t middle() const { return (lower_ + upper_ + 1) / 2; }
+  value_type::value_type middle() const { return (lower_ + upper_ + 1) / 2; }
 
   TCB0Delay& delay_;
   TCA0_PWM& pwm_;
   InputPin input_;
   // A value at [lower_] is known to be 0.
-  uint_fast16_t lower_;
+  value_type::value_type lower_;
   // A value at [upper_ + 1] is known to be 1.
   // It is assumed that [256] is always 1.
-  uint_fast16_t upper_;
+  value_type::value_type upper_;
 };
 
 constexpr const TCA0_PWM::Config kLedPwmFreq(1.0);
@@ -156,8 +156,8 @@ int main(void) {
   TCB0Delay delay(4, EVSYS_USER_CHANNEL0_gc);
   while (true) {
     BinarySearch search(delay, pwm, InputPin(PORTB, PIN1_bm));
-    int_fast16_t signal;
-    while ((signal = search.OnInterrupt()) < 0) {
+    BinarySearch::value_type signal(0);
+    while ((signal = search.OnInterrupt()).fraction_bits < 0) {
       sleep.Start();
       twi.OnInterrupt();
     }
