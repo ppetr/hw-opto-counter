@@ -25,6 +25,7 @@ extern "C" {
 
 #include "timer.h"
 #include "twi.h"
+#include "twi_smbus.h"
 
 constexpr uint8_t kTwiAddress =
     18;  // Randomly generated - https://xkcd.com/221/
@@ -110,44 +111,26 @@ class BinarySearch {
 
 constexpr const TCA0_PWM::Config kLedPwmFreq(1.0);
 
-class TwiOutData {
+class Registers {
  public:
-  // Each transaction is demarcated by start-stop (or start-abort).
-  void TransactionStart() {}
-  void TransactionAbort() {}
-  void TransactionStop() {}
-  // Called to acknowledge start of a write block.
-  bool WriteStart() { return true; }
-  // Called to acknowledge reception of a byte.
-  bool Write(uint8_t) { return true; }
-  // Called to acknowledge start of a read block.
-  bool ReadStart() {
-    read_index_ = 0;
-    return sizeof(read_data_) > 0;
-  }
-  // Called to return the next value to be passed to the host.
-  // Returning an empty value signals that there is no more data available.
-  optional<uint8_t> Read() {
-    if (read_index_ < sizeof(read_data_)) {
-      return reinterpret_cast<const uint8_t*>(&read_data_)[read_index_++];
-    } else {
-      return {};
+  void Snapshot() {}
+  bool HasRegister(uint8_t reg) const { return ReadWord(reg).has_value(); }
+  optional<int16_t> ReadWord(uint8_t reg) const {
+    switch (reg) {
+      case 0:
+        return {42};
+      case 1:
+        return {73};
+      default:
+        return {};
     }
   }
-
- private:
-  uint_fast16_t read_index_ = 0;
-  struct __attribute__((packed)) {
-    uint8_t channel1 = 42;
-    uint8_t channel2 = 73;
-  } read_data_;
-
-  static_assert(sizeof(read_data_) == 2, "sizeof(read_data_) != 2");
 };
 
 int main(void) {
   Sleep sleep(SLPCTRL_SMODE_IDLE_gc);
-  TwiClient<TwiOutData> twi(kTwiAddress, TwiOutData());
+  TwiClient<SMBusClient<Registers>> twi(kTwiAddress,
+                                        SMBusClient<Registers>({}));
   // Enable the TCA0 PB3 pin (WO0 alternate)
   PORTB.DIRSET = PIN3_bm;
   TCA0_PWM pwm(kLedPwmFreq);
