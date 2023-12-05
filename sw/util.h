@@ -97,6 +97,21 @@ struct FixedPointFraction {
   constexpr FixedPointFraction(float f)
       : FixedPointFraction(static_cast<T>(f * (1 << Bits))) {}
 
+  template <typename U, uint8_t UBits = sizeof(U) * 2 - 2>
+  FixedPointFraction<U, UBits> Convert() const {
+    using Target = FixedPointFraction<U, UBits>;
+    static constexpr int kShift = Target::kFractionBits - kFractionBits;
+    // To be able to use `if constexpr` here we'd need a more recent avr-g++
+    // version. See https://stackoverflow.com/q/77606346/1333025.
+    if (kShift > 0) {
+      return Target(static_cast<U>(fraction_bits << kShift));
+    } else if (kShift < 0) {
+      return Target{fraction_bits >> kShift};
+    } else {
+      return Target{fraction_bits};
+    }
+  }
+
   T fraction_bits;
 };
 

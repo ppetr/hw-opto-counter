@@ -163,16 +163,16 @@ int main(void) {
 
   TCB0Delay delay(4, EVSYS_USER_CHANNEL0_gc);
   while (true) {
-    constexpr static auto kRegShift =
-        15 - BinarySearch::value_type::kFractionBits;
     PORTA.OUTCLR = PIN6_bm;
     PORTA.OUTSET = PIN5_bm;
-    regs.led1 = BinarySearchLoop(pwm, delay, twi, sleep, kOptIn).fraction_bits
-                << kRegShift;
+    regs.led1 = BinarySearchLoop(pwm, delay, twi, sleep, kOptIn)
+                    .Convert<int16_t, 15>()
+                    .fraction_bits;
     PORTA.OUTCLR = PIN5_bm;
     PORTA.OUTSET = PIN6_bm;
-    regs.led2 = BinarySearchLoop(pwm, delay, twi, sleep, kOptIn).fraction_bits
-                << kRegShift;
+    regs.led2 = BinarySearchLoop(pwm, delay, twi, sleep, kOptIn)
+                    .Convert<int16_t, 15>()
+                    .fraction_bits;
   }
   EVSYS.CHANNEL0 = EVSYS_CHANNEL0_OFF_gc;
 }
