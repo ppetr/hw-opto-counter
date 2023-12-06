@@ -108,12 +108,9 @@ class BinarySearch {
 
  private:
   void SetPwm() {
-    // We shift 1 bit less so that the maximum value for PWM is 0.5 - at which
+    // Divide by 2 so that the maximum value for PWM is 0.5 - at which
     // the signal at the base frequency is the strongest.
-    constexpr static int_fast16_t kShift =
-        FixedPointFraction<>::kFractionBits - value_type::kFractionBits - 1;
-    static_assert(kShift >= 0, "Precision exceeds the PWM precision");
-    pwm_.SetDutyCycle(FixedPointFraction<>(middle() << kShift));
+    pwm_.SetDutyCycle(value_type{middle()}.ShiftRight<1>());
     delay_.Start();
   }
 

@@ -100,14 +100,20 @@ struct FixedPointFraction {
   constexpr FixedPointFraction(float f)
       : FixedPointFraction(static_cast<T>(f * (1 << Bits))) {}
 
-  // Auto-converts to any `FixedPointFraction` type of higher precision.
+  // Auto-converts to any `FixedPointFraction` type of higher precision,
+  // shifting right(+) or left(-) at the same time.
+  template <int8_t RightShift>
   struct AutoConverter {
     template <typename U, uint8_t UBits = sizeof(U) * 8 - 2>
     operator FixedPointFraction<U, UBits>() const&& {
       using Target = FixedPointFraction<U, UBits>;
-      static constexpr int kShift = Target::kFractionBits - kFractionBits;
-      static_assert(kShift >= 0, "The conversion would lose precision");
-      return Target(static_cast<U>(fraction.fraction_bits << kShift));
+      static constexpr int kLeftShift =
+          Target::kFractionBits - kFractionBits - RightShift;
+      static_assert(
+          kLeftShift >= 0,
+          "The conversion would lose precision (if needed, this check could be "
+          "losened to allow right-shifting up to the RightShift parameter)");
+      return Target(static_cast<U>(fraction.fraction_bits << kLeftShift));
     }
 
     const FixedPointFraction& fraction;
@@ -115,7 +121,12 @@ struct FixedPointFraction {
 
   // Converts from this representation to another of the same or higher
   // precision.
-  AutoConverter Convert() const { return AutoConverter{*this}; }
+  AutoConverter<0> Convert() const { return AutoConverter<0>{*this}; }
+  // Shifts this value right (positive) or left (negative `shift`)
+  template <int8_t Shift>
+  AutoConverter<Shift> ShiftRight() const {
+    return AutoConverter<Shift>{*this};
+  }
 
   T fraction_bits;
 };
