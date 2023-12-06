@@ -55,8 +55,11 @@ class optional {
   bool has_value() const { return has_value_; }
   operator bool() const { return has_value(); }
 
-  T& operator*() { return value_; }
-  const T& operator*() const { return value_; }
+  const T& operator*() const& { return value_; }
+  T& operator*() & { return value_; }
+  const T&& operator*() const&& { return move(value_); }
+  T&& operator*() && { return move(value_); }
+
   T* operator->() { return &**this; }
   const T* operator->() const { return &**this; }
 
