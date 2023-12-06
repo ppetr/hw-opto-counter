@@ -100,20 +100,22 @@ struct FixedPointFraction {
   constexpr FixedPointFraction(float f)
       : FixedPointFraction(static_cast<T>(f * (1 << Bits))) {}
 
-  template <typename U, uint8_t UBits = sizeof(U) * 2 - 2>
-  FixedPointFraction<U, UBits> Convert() const {
-    using Target = FixedPointFraction<U, UBits>;
-    static constexpr int kShift = Target::kFractionBits - kFractionBits;
-    // To be able to use `if constexpr` here we'd need a more recent avr-g++
-    // version. See https://stackoverflow.com/q/77606346/1333025.
-    if (kShift > 0) {
-      return Target(static_cast<U>(fraction_bits << kShift));
-    } else if (kShift < 0) {
-      return Target{fraction_bits >> kShift};
-    } else {
-      return Target{fraction_bits};
+  // Auto-converts to any `FixedPointFraction` type of higher precision.
+  struct AutoConverter {
+    template <typename U, uint8_t UBits = sizeof(U) * 8 - 2>
+    operator FixedPointFraction<U, UBits>() const&& {
+      using Target = FixedPointFraction<U, UBits>;
+      static constexpr int kShift = Target::kFractionBits - kFractionBits;
+      static_assert(kShift >= 0, "The conversion would lose precision");
+      return Target(static_cast<U>(fraction.fraction_bits << kShift));
     }
-  }
+
+    const FixedPointFraction& fraction;
+  };
+
+  // Converts from this representation to another of the same or higher
+  // precision.
+  AutoConverter Convert() const { return AutoConverter{*this}; }
 
   T fraction_bits;
 };

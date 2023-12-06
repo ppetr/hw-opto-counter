@@ -62,16 +62,16 @@ struct Registers {
   optional<int16_t> ReadWord(uint8_t reg) const {
     switch (reg) {
       case 0:
-        return led1;
+        return led1.fraction_bits;
       case 1:
-        return led2;
+        return led2.fraction_bits;
       default:
         return {};
     }
   }
 
-  int16_t led1;
-  int16_t led2;
+  FixedPointFraction<int16_t, 15> led1 = 0;
+  FixedPointFraction<int16_t, 15> led2 = 0;
 };
 
 using TwiRegisters = TwiClient<SMBusClient<Registers&>>;
@@ -165,14 +165,10 @@ int main(void) {
   while (true) {
     PORTA.OUTCLR = PIN6_bm;
     PORTA.OUTSET = PIN5_bm;
-    regs.led1 = BinarySearchLoop(pwm, delay, twi, sleep, kOptIn)
-                    .Convert<int16_t, 15>()
-                    .fraction_bits;
+    regs.led1 = BinarySearchLoop(pwm, delay, twi, sleep, kOptIn).Convert();
     PORTA.OUTCLR = PIN5_bm;
     PORTA.OUTSET = PIN6_bm;
-    regs.led2 = BinarySearchLoop(pwm, delay, twi, sleep, kOptIn)
-                    .Convert<int16_t, 15>()
-                    .fraction_bits;
-  }
+    regs.led2 = BinarySearchLoop(pwm, delay, twi, sleep, kOptIn).Convert();
+  };
   EVSYS.CHANNEL0 = EVSYS_CHANNEL0_OFF_gc;
 }
