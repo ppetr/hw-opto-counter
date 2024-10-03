@@ -79,6 +79,7 @@ using TwiRegisters = TwiClient<SMBusClient<Registers&>>;
 class BinarySearch {
  public:
   using value_type = FixedPointFraction<int_fast16_t, 8>;
+  constexpr static value_type kNotReady = value_type{-1};
 
   BinarySearch(TCB0Delay& delay, TCA0_PWM& pwm, InputPin input)
       : delay_(delay),
@@ -103,7 +104,7 @@ class BinarySearch {
       }
       SetPwm();
     }
-    return value_type{-1};
+    return kNotReady;
   }
 
  private:
@@ -132,7 +133,7 @@ BinarySearch::value_type BinarySearchLoop(TCA0_PWM& pwm, TCB0Delay& delay,
                                           InputPin opt_in) {
   BinarySearch search(delay, pwm, opt_in);
   BinarySearch::value_type signal(0);
-  while ((signal = search.OnInterrupt()).fraction_bits < 0) {
+  while ((signal = search.OnInterrupt(debug)) == search.kNotReady) {
     sleep.Start();
     twi.OnInterrupt();
   }
