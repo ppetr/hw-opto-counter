@@ -113,7 +113,7 @@ struct FixedPointFraction {
           kLeftShift >= 0,
           "The conversion would lose precision (if needed, this check could be "
           "losened to allow right-shifting up to the RightShift parameter)");
-      return Target(static_cast<U>(fraction.fraction_bits << kLeftShift));
+      return Target(static_cast<U>(fraction.fraction_bits) << kLeftShift);
     }
 
     const FixedPointFraction& fraction;
