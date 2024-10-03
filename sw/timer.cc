@@ -46,15 +46,16 @@ TCA0_PWM::~TCA0_PWM() {
 TCB0Delay::TCB0Delay(uint16_t count, EVSYS_USER_t input_channel,
                      EVSYS_USER_t helper_channel)
     : trigger_event_(static_cast<EVSYS_SWEVENTA_t>(
-          1 << (helper_channel - EVSYS_USER_CHANNEL0_gc + EVSYS_SWEVENTA_gp))) {
+          1 << (helper_channel - EVSYS_USER_CHANNEL0_gc + EVSYS_SWEVENTA_gp))),
+      count_(count - 1) {
   EVSYS.USERTCB0COUNT = input_channel;
   EVSYS.USERTCB0CAPT = helper_channel;
   // See Section 22.3.3.1.7 in the manual.
   TCB0.EVCTRL = TCB_CAPTEI_bm;
   TCB0.CTRLB = TCB_CNTMODE_SINGLE_gc;
   TCB0.INTCTRL = TCB_CAPT_bm;
-  TCB0_CCMP = --count;
-  TCB0.CNT = count;  // Prevent the counter from starting immediately.
+  TCB0.CCMP = count_;
+  TCB0.CNT = count_;  // Prevent the counter from starting immediately.
   TCB0.CTRLA = TCB_ENABLE_bm | TCB_CLKSEL_EVENT_gc;  // Enable last.
 }
 TCB0Delay::~TCB0Delay() {

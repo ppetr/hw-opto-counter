@@ -77,9 +77,9 @@ class TCA0_PWM final {
 
 // Counts a given number of input event cycles and then triggers an interrupt.
 // Uses channels:
-// `input_channel`: An event in this channel triggers a delayed pulse. This is
+// `input_channel`: To pass events - pulses from TCA0 (PWM).
+// `helper_channel`: An event in this channel triggers a delayed pulse. This is
 //     exactly what is done by `Start`.
-// `helper_channel`: To pass events - pulses from TCA0 (PWM).
 class TCB0Delay {
  public:
   explicit TCB0Delay(uint16_t count, EVSYS_USER_t input_channel,
@@ -89,8 +89,8 @@ class TCB0Delay {
   ~TCB0Delay();
 
   void Start() {
+    TCB0.CNT = count_;     // Prevent the counter from starting immediately.
     (void)HasTriggered();  // Clear any pending interrupts.
-    TCB0.CNT = 0;
     EVSYS.SWEVENTA = trigger_event_;
   }
 
@@ -103,6 +103,7 @@ class TCB0Delay {
 
  private:
   const EVSYS_SWEVENTA_t trigger_event_;
+  const uint16_t count_;
 };
 
 #endif  // _TIMER_H
