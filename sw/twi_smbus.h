@@ -64,7 +64,7 @@ class SMBusClient {
       return true;
     }
     index_ = 0;
-    optional<int16_t> data = registers_.ReadWord(*command_);
+    const optional<int16_t> data = registers_.ReadWord(*command_);
     if (!data.has_value()) {
       index_ = sizeof(buffer_);
       return false;
@@ -74,7 +74,7 @@ class SMBusClient {
     return true;
   }
   // Called to return the next value to be passed to the host.
-  // Returning `-1` signals that there is no more data available.
+  // Returning `nullopt` signals that there is no more data available.
   optional<uint8_t> Read() {
     if (index_ < static_cast<intptr_t>(sizeof(buffer_))) {
       return buffer_[index_++];

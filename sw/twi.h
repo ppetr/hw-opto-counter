@@ -86,7 +86,7 @@ class TwiClient {
       }
     } else if (status & TWI_DIF_bm) {  // Data interrupt.
       if ((status & TWI_DIR_bm) == kTwiDirHostRead) {
-        optional<uint8_t> data = io_.Read();
+        const optional<uint8_t> data = io_.Read();
         if (data.has_value()) {
           TWI0.SDATA = *data;
           return TWI_ACKACT_ACK_gc | TWI_SCMD_RESPONSE_gc;
