@@ -20,7 +20,7 @@ AVR_FREQ=3'333'333L  # 3.3MHz (for accurate baudrate timing)
 PROGRAMMER_DEV=/dev/ttyUSB0
 PROGRAMMER_TYPE=jtag2updi
 TARGET_PREFIX=build/main
-ATPACK_ARCHIVE=Microchip.ATtiny_DFP.3.1.260.atpack.tar.xz
+ATPACK_ARCHIVE=Microchip.ATtiny_DFP.3.3.272.atpack.tar.xz
 ATPACK_DIR=build/atpack
 
 CFLAGS=-g -DF_CPU=$(AVR_FREQ) -DNDEBUG -std=c++17 -fdata-sections -ffunction-sections -fno-exceptions -flto=auto -Wall -Os -Werror -Wextra -B $(ATPACK_DIR)/gcc/dev/$(AVR_TYPE) -isystem $(ATPACK_DIR)/include
