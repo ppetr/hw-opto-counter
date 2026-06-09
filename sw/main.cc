@@ -133,7 +133,8 @@ BinarySearch::value_type BinarySearchLoop(TCA0_PWM& pwm, TCB0Delay& delay,
                                           InputPin opt_in) {
   BinarySearch search(delay, pwm, opt_in);
   BinarySearch::value_type signal(0);
-  while ((signal = search.OnInterrupt(debug)) == search.kNotReady) {
+  twi.OnInterrupt();  // Process any pending TWI before the first sleep.
+  while ((signal = search.OnInterrupt()) == search.kNotReady) {
     sleep.Start();
     twi.OnInterrupt();
   }
@@ -160,6 +161,12 @@ int main(void) {
   EVSYS.CHANNEL0 = EVSYS_CHANNEL0_TCA0_CMP0_LCMP0_gc;
 
   TCB0Delay delay(4, EVSYS_USER_CHANNEL0_gc);
+  // Enable global interrupts to allow hardware peripheral events to act as a
+  // wake-up signal for the Sleep Controller. Since the ISRs are optimized as
+  // `EMPTY_INTERRUPT` (immediate RETI), no application logic executes inside
+  // the interrupts; instead, the wake-up triggers the main cooperative loop to
+  // poll and process the hardware flags via `OnInterrupt()` methods.
+  sei();
   while (true) {
     PORTA.OUTCLR = PIN6_bm;
     PORTA.OUTSET = PIN5_bm;

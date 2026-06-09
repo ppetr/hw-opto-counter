@@ -50,7 +50,9 @@ class TwiClient {
   TwiClient(const TwiClient&) = delete;
   TwiClient& operator=(const TwiClient&) = delete;
 
-  void OnInterrupt() { TWI0.SCTRLB = OnInterrupt(TWI0.SSTATUS); }
+  void OnInterrupt() {
+    while ((TWI0.SCTRLB = OnInterrupt(TWI0.SSTATUS)) != TWI_SCMD_NOACT_gc);
+  }
 
  private:
   // Returns the value to be written into `SCTRLB`.

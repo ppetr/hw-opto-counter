@@ -128,6 +128,13 @@ struct FixedPointFraction {
     return AutoConverter<Shift>{*this};
   }
 
+  friend bool operator==(FixedPointFraction left, FixedPointFraction right) {
+    return left.fraction_bits == right.fraction_bits;
+  }
+  friend bool operator!=(FixedPointFraction left, FixedPointFraction right) {
+    return !(left == right);
+  }
+
   T fraction_bits;
 };
 
